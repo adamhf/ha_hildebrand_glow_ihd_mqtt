@@ -141,6 +141,7 @@ ELECTRICITY_SENSORS = [
     "state_class": SensorStateClass.MEASUREMENT,
     "icon": "mdi:flash",
     "func": lambda js : js['electricitymeter']['power']['value'],
+    "ignore_negative": True,
   },
   {
     "name": "Smart Meter Electricity: Cost (Today)",
@@ -332,9 +333,10 @@ class HildebrandGlowMqttSensorUpdateGroup:
 class HildebrandGlowMqttSensor(SensorEntity):
     """Representation of a room sensor that is updated via MQTT."""
 
-    def __init__(self, device_id, name, icon, device_class, unit_of_measurement, state_class, func, entity_category = EntityCategory.CONFIG, ignore_zero_values = False) -> None:
+    def __init__(self, device_id, name, icon, device_class, unit_of_measurement, state_class, func, entity_category = EntityCategory.CONFIG, ignore_zero_values = False, ignore_negative=False) -> None:
         """Initialize the sensor."""
         self._device_id = device_id
+        self._ignore_negative = ignore_negative
         self._ignore_zero_values = ignore_zero_values
         self._attr_name = name
         self._attr_unique_id = slugify(device_id + "_" + name)
@@ -359,6 +361,8 @@ class HildebrandGlowMqttSensor(SensorEntity):
         new_value = self._func(mqtt_data)
         if (self._ignore_zero_values and new_value == 0):
             _LOGGER.debug("Ignored new value of %s on %s.", new_value, self._attr_unique_id)
+            return
+        if (self._ignore_negative and new_value < 0):
             return
         self._attr_native_value = new_value
         if (self.hass is not None): # this is a hack to get around the fact that the entity is not yet initialized at first
